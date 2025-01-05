@@ -1,6 +1,6 @@
 -- Insert products first
-INSERT INTO products (name, url) VALUES ('Tapones Loop Quiet', 'https://articulo.mercadolibre.com.pe/MPE-653839472-tapones-loop-quiet-_JM');
-INSERT INTO products (name, url) VALUES ('Tapones Loop Quiet Plus', 'https://articulo.mercadolibre.com.pe/MPE-684379394-tapones-loop-quiet-plus-_JM');
+-- INSERT INTO products (name, url) VALUES ('Tapones Loop Quiet', 'https://articulo.mercadolibre.com.pe/MPE-653839472-tapones-loop-quiet-_JM');
+INSERT INTO products (name, url) VALUES ('Tapones Loop Quiet Plus', 'https://articulo.mercadolibre.com.pe/MPE-655724908-tapones-loop-experience-plus-_JM');
 -- INSERT INTO products (name, url) VALUES ('Tapones Loop Experience', 'https://articulo.mercadolibre.com.pe/MPE-688935718-tapones-loop-experience-_JM');
 -- INSERT INTO products (name, url) VALUES ('Tapones Loop Experience Plus', 'https://articulo.mercadolibre.com.pe/MPE-655724908-tapones-loop-experience-plus-_JM');
 -- INSERT INTO products (name, url) VALUES ('Tapones Loop X Tomorrowland Experience', 'https://articulo.mercadolibre.com.pe/MPE-656555688-tapones-loop-x-tomorrowland-experience-_JM');

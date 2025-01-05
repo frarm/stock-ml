@@ -12,6 +12,7 @@ import com.jarlium.stock_ml.model.Product;
 import com.jarlium.stock_ml.repository.ProductRepository;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserType;
+import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 
@@ -40,6 +41,22 @@ public class ScrapingService {
                 if (publicacionPausada) {
                     continue;
                 }
+                Locator variantDiv = page.locator(".ui-pdp-variations__picker-default-container");
+                System.out.println("Product: " + product.getName());
+                Locator productColor = page.locator(".ui-pdp-variations__label");
+                Locator availableSpan = page.locator(".ui-pdp-buybox__quantity__available");
+                // Click on each <a> tag inside divVariantes starting from the second one
+                List<Locator> links = variantDiv.locator("a").all();
+                for (int i = 0; i < links.size(); i++) {
+                    links.get(i).click();
+                    System.out.println("Color: " + productColor.innerText());
+                    if (availableSpan.isVisible()) {
+                        System.out.println("Stock: " + availableSpan.innerText());
+                    } else {
+                        System.out.println("Stock: 1");
+                    }
+                }
+
             }
         } catch (Exception e) {
             e.printStackTrace();
