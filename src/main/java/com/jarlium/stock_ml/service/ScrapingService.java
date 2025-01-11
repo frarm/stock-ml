@@ -13,6 +13,7 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 
+// por el momento solo puedo agarrar maximo 5 unidades
 @Service
 public class ScrapingService {
 
@@ -29,53 +30,70 @@ public class ScrapingService {
         List<Product> products = getConfiguredProducts();
         try (Playwright playwright = Playwright.create()) {
             Browser browser = playwright.chromium()
-                    .launch(new BrowserType.LaunchOptions().setHeadless(false));
+                    .launch(new BrowserType.LaunchOptions());
             for (Product product : products) {
                 Page page = browser.newPage();
                 page.navigate(product.getUrl());
-                boolean publicacionPausada = page
+
+                // Verificar si la publicacion esta pausada
+                boolean divPubPausada = page
                         .getByText("Publicación pausada", new Page.GetByTextOptions().setExact(true)).first()
                         .isVisible();
-                if (publicacionPausada) {
+                if (divPubPausada) {
                     System.out.println("publicacionPausada: " + product.getName());
                     continue;
                 }
-                page.waitForTimeout(1_000);
-                Locator eightOrMoreButton = page.locator(".andes-dropdown__trigger");
-                if (eightOrMoreButton.isVisible()) {
-                    eightOrMoreButton.click();
-                    Locator variantUl = page.locator(".andes-card__content ul");
-                    int linksSize = variantUl.locator("li").all().size();
-                    for (int i = 0; i < linksSize; i++) {
-                        variantUl.locator("li").nth(i).click();
+
+                // Locators Div Principales
+                Locator divContainer = page.locator(
+                        ".col-2.ui-pdp-container__col.ui-vip-core-container--column__right.ui-vip-core-container--short-description");
+                Locator divVariations = divContainer.locator(".ui-pdp-variations");
+                // Locator divAvailableQuantity =
+                // divContainer.locator("#buybox_available_quantity");
+                Locator divVariationsSinglePicker = divVariations.locator(".ui-pdp-variations__picker-single");
+                Locator divVariationsDropdownPicker = divVariations.locator(".ui-pdp-dropdown-selector");
+                Locator divVariationsMultiplePicker = divVariations
+                        .locator(".ui-pdp-variations__picker-default-container");
+
+                // Locators de Elementos para screpear
+                Locator variantColorSingle = divVariations.locator("span#picker-label-COLOR_SECONDARY_COLOR");
+                // aca falla loop quiet plus
+                Locator variantColorMultiple = divVariations.locator(".ui-pdp-variations__label > span:nth-of-type(1)");
+                Locator availableQuantity = divContainer.locator(".ui-pdp-buybox__quantity__available");
+
+                String variantColorValue;
+                Integer variantLinksSize;
+                page.waitForTimeout(2_000);
+
+                if (divVariationsMultiplePicker.isVisible()) {
+                    variantLinksSize = divVariationsMultiplePicker.locator("a").all().size();
+                    page.waitForTimeout(2_000);
+                    for (int i = 0; i < variantLinksSize; i++) {
+                        divVariationsMultiplePicker.locator("a").nth(i).click();
                         page.waitForTimeout(2_000);
-                        Locator productColor = page.locator("#picker-label-COLOR_SECONDARY_COLOR span");
-                        Locator availableSpan = page.locator(".ui-pdp-buybox__quantity__available");
-                        System.out.println("Product: " + product.getName());
-                        System.out.println("Color: " + productColor.innerText());
-                        if (availableSpan.isVisible()) {
-                            System.out.println("Stock: " + availableSpan.innerText());
+                        if (variantLinksSize > 1) {
+                            variantColorValue = variantColorMultiple.innerText();
                         } else {
-                            System.out.println("Stock: 1");
+                            variantColorValue = variantColorSingle.innerText();
                         }
-                        eightOrMoreButton.click();
+
+                        processAvailableQuantityByColor(availableQuantity, product, variantColorValue);
                     }
-                } else {
-                    Locator variantDiv = page.locator(".ui-pdp-variations__picker-default-container");
-                    System.out.println("Product: " + product.getName());
-                    Locator productColor = page.locator(".ui-pdp-variations__label");
-                    Locator availableSpan = page.locator(".ui-pdp-buybox__quantity__available");
-                    // Click on each <a> tag inside divVariantes starting from the second one
-                    List<Locator> links = variantDiv.locator("a").all();
-                    for (int i = 0; i < links.size(); i++) {
-                        links.get(i).click();
+                } else if (divVariationsSinglePicker.isVisible()) {
+                    variantColorValue = variantColorSingle.innerText();
+                    processAvailableQuantityByColor(availableQuantity, product, variantColorValue);
+                } else if (divVariationsDropdownPicker.isVisible()) {
+                    Locator variationsDropdown = divVariationsDropdownPicker.locator(".andes-dropdown__trigger");
+                    variationsDropdown.click();
+                    Locator variationsDropdownUl = divVariationsDropdownPicker.locator(".andes-card__content ul");
+                    variantLinksSize = variationsDropdownUl.locator("li").all().size();
+                    page.waitForTimeout(2_000);
+                    for (int i = 0; i < variantLinksSize; i++) {
+                        variationsDropdownUl.locator("li").nth(i).click();
                         page.waitForTimeout(2_000);
-                        System.out.println("Color: " + productColor.innerText());
-                        if (availableSpan.isVisible()) {
-                            System.out.println("Stock: " + availableSpan.innerText());
-                        } else {
-                            System.out.println("Stock: 1");
-                        }
+                        variantColorValue = variantColorSingle.innerText();
+                        processAvailableQuantityByColor(availableQuantity, product, variantColorValue);
+                        divVariationsDropdownPicker.click();
                     }
                 }
             }
@@ -86,5 +104,22 @@ public class ScrapingService {
 
     private List<Product> getConfiguredProducts() {
         return productRepository.findAll();
+    }
+
+    // ver los scrapers para Tapones Loop Experience y Los Chicles
+
+    private void processAvailableQuantityByColor(Locator availableQuantity, Product product, String variantColorValue) {
+        String availableQuantityText;
+        Integer availableQuantityValue;
+
+        if (availableQuantity.isVisible()) {
+            availableQuantityText = availableQuantity.innerText();
+            availableQuantityValue = Integer.parseInt(availableQuantityText.replaceAll("\\D", ""));
+        } else {
+            availableQuantityValue = 1;
+        }
+        System.out.println("Product: " + product.getName());
+        System.out.println("Variante: " + variantColorValue);
+        System.out.println("Stock: " + availableQuantityValue);
     }
 }
