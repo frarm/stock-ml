@@ -1,0 +1,34 @@
+services:
+  mysql:
+    image: mysql:lastest
+    container_name: stock_ml_mysql
+    environment:
+      - MYSQL_DATABASE: stock_ml
+      - MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - stock-network
+  # app:
+  #   build: .
+  #   container_name: stock_ml_app
+  #   depends_on:
+  #     - mysql
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/stock_ml
+  #     SPRING_DATASOURCE_USERNAME: root
+  #     SPRING_DATASOURCE_PASSWORD: 159753698
+  #   networks:
+  #     - stock-network
+
+volumes:
+  mysql_data:
+
+
+networks:
+  stock-network:
+    driver: bridge

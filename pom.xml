@@ -11,7 +11,7 @@
 	</parent>
 	<groupId>com.jarlium</groupId>
 	<artifactId>stock-ml</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.1</version>
 	<name>stock-ml</name>
 	<description>Demo project for Spring Boot</description>
 	<url/>
@@ -64,13 +64,6 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 			<version>3.4.1</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-devtools</artifactId>
-			<scope>runtime</scope>
-			<optional>true</optional>
 		</dependency>
 	</dependencies>
 

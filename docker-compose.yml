@@ -5,7 +5,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: 159753698
       MYSQL_DATABASE: stock_ml
-      MYSQL_USER: root
+      MYSQL_USER: frarm
       MYSQL_PASSWORD: 159753698
     ports:
       - "3306:3306"
@@ -13,19 +13,19 @@ services:
       - mysql_data:/var/lib/mysql
     networks:
       - stock-network
-  # app:
-  #   build: .
-  #   container_name: stock_ml_app
-  #   depends_on:
-  #     - mysql
-  #   ports:
-  #     - "8080:8080"
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/stock_ml
-  #     SPRING_DATASOURCE_USERNAME: root
-  #     SPRING_DATASOURCE_PASSWORD: 159753698
-  #   networks:
-  #     - stock-network
+  app:
+    build: .
+    container_name: stock_ml_app
+    depends_on:
+      - mysql
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/stock_ml
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 159753698
+    networks:
+      - stock-network
 
 volumes:
   mysql_data:

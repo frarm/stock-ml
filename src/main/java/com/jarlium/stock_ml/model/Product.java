@@ -28,9 +28,9 @@ public class Product {
     private Double price;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
-    private List<Color> availableColors;
+    private List<Variant> availableVariants;
 
     public int getTotalStock() {
-        return availableColors.stream().mapToInt(Color::getStock).sum();
+        return availableVariants.stream().mapToInt(Variant::getStock).sum();
     }
 }
