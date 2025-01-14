@@ -13,6 +13,8 @@ services:
       - mysql_data:/var/lib/mysql
     networks:
       - stock-network
+    restart: always
+
   app:
     build: .
     container_name: stock_ml_app
@@ -26,6 +28,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: 159753698
     networks:
       - stock-network
+    restart: always
 
 volumes:
   mysql_data:

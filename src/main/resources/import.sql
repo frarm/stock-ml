@@ -1,6 +1,6 @@
 --Dropdown
 -- CHECK
---INSERT INTO products (name, url) VALUES ('Tapones Loop Quiet', 'https://articulo.mercadolibre.com.pe/MPE-653839472-tapones-loop-quiet-_JM');
+-- INSERT INTO products (name, url) VALUES ('Tapones Loop Quiet', 'https://articulo.mercadolibre.com.pe/MPE-653839472-tapones-loop-quiet-_JM');
 
 -- --Default
 -- -- CHECK
