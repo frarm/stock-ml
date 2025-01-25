@@ -1,9 +1,9 @@
 package com.jarlium.stock_ml.service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.jarlium.stock_ml.model.Product;
@@ -16,7 +16,9 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 
-// por el momento solo puedo agarrar maximo 5 unidades
+// por el momento solo puedo agarrar maximo 5 unidades. SOLUCIONAR
+// Comparar con el stock anterior por fecha (dia) en la base de datos y si ya no aparece ese color, marcar el stock como 0 (agotado). SOLUCIONAR
+// Cuando disminuya 1 producto, guardar en una tabla el historial. SOLUCIONAR
 @Service
 public class ScrapingService {
 
@@ -26,10 +28,20 @@ public class ScrapingService {
     @Autowired
     private VariantRepository variantRepository;
 
-    @Scheduled(cron = "0 20 16 * * ?", zone = "America/Lima")
+    String variantColor;
+    boolean variantExists;
+    Integer totalVariants;
+    Integer availableQuantity;
+    List<String> DbVariantColors;
+    List<String> scrappedVariantColors = new ArrayList<>();
+    String availableQuantityText;
+
+    // @Scheduled(cron = "0 20 16 * * ?", zone = "America/Lima")
     public void checkProductsStock() {
 
-        List<Product> products = getConfiguredProducts();
+        List<Product> products = getProducts();
+
+        // Scraping con Playwright
         try (Playwright playwright = Playwright.create()) {
             Browser browser = playwright.chromium()
                     .launch(new BrowserType.LaunchOptions());
@@ -46,56 +58,76 @@ public class ScrapingService {
                     continue;
                 }
 
-                // Locators Div Principales
-                Locator containerDiv = page.locator(
+                DbVariantColors = getColorsByProduct(product);
+
+                // Ancestros de los locators de variaciones a scrapear
+                Locator coreContainerDiv = page.locator(
                         ".col-2.ui-pdp-container__col.ui-vip-core-container--column__right.ui-vip-core-container--short-description");
-                Locator variationsDiv = containerDiv.locator(".ui-pdp-variations");
-                // Locator divAvailableQuantity =
-                // divContainer.locator("#buybox_available_quantity");
-                Locator variationsSinglePickerDiv = variationsDiv.locator(".ui-pdp-variations__picker-single");
-                Locator variationsDropdownPickerDiv = variationsDiv.locator(".ui-pdp-dropdown-selector");
-                Locator variationsMultiplePickerDiv = variationsDiv
+                Locator variationsGeneralDiv = coreContainerDiv.locator(".ui-pdp-variations");
+                Locator variationsSinglePickerDiv = variationsGeneralDiv.locator(".ui-pdp-variations__picker-single");
+                Locator variationsDropdownPickerDiv = variationsGeneralDiv.locator(".ui-pdp-dropdown-selector");
+                Locator variationsMultiplePickerDiv = variationsGeneralDiv
                         .locator(".ui-pdp-variations__picker-default-container");
 
-                // Locators de Elementos para screpear
-                Locator variantColorSingle = variationsDiv.locator("span#picker-label-COLOR_SECONDARY_COLOR");
-                // aca falla loop quiet plus
-                Locator variantColorMultiple = variationsDiv.locator(".ui-pdp-variations__label > span:nth-of-type(1)");
-                Locator availableQuantity = containerDiv.locator(".ui-pdp-buybox__quantity__available");
+                // Locators de variaciones a screpear
+                Locator variantColorSingleLoc = variationsGeneralDiv.locator("span#picker-label-COLOR_SECONDARY_COLOR");
+                Locator variantColorMultipleLoc = variationsGeneralDiv
+                        .locator(".ui-pdp-variations__label > span:nth-of-type(1)");
+                Locator availableQuantityLoc = coreContainerDiv.locator(".ui-pdp-buybox__quantity__available");
 
-                String variantColorValue;
-                Integer variantLinksSize;
-                page.waitForTimeout((long) (Math.random() * 1000) + 2000);
+                page.waitForTimeout((long) (Math.random() * 1000) + 3000);
 
                 if (variationsMultiplePickerDiv.isVisible()) {
-                    variantLinksSize = variationsMultiplePickerDiv.locator("a").all().size();
-                    page.waitForTimeout((long) (Math.random() * 1000) + 2000);
-                    for (int i = 0; i < variantLinksSize; i++) {
-                        variationsMultiplePickerDiv.locator("a").nth(i).click();
-                        page.waitForTimeout((long) (Math.random() * 1000) + 2000);
-                        if (variantLinksSize > 1) {
-                            variantColorValue = variantColorMultiple.innerText();
-                        } else {
-                            variantColorValue = variantColorSingle.innerText();
-                        }
+                    totalVariants = variationsMultiplePickerDiv.locator("a").all().size();
 
-                        processAvailableQuantityByColor(availableQuantity, product, variantColorValue);
+                    page.waitForTimeout((long) (Math.random() * 1000) + 3000);
+
+                    for (int i = 0; i < totalVariants; i++) {
+                        variationsMultiplePickerDiv.locator("a").nth(i).click();
+
+                        page.waitForTimeout((long) (Math.random() * 1000) + 3000);
+
+                        variantColor = variantColorMultipleLoc.innerText();
+                        availableQuantity = getAvailableQuantity(availableQuantityLoc);
+
+                        // agrear color a la lista para luego comparar con la base de datos
+                        scrappedVariantColors.add(variantColor);
+
+                        saveVariant(product, variantColor, availableQuantity);
                     }
+                    // setear a 0 el stock de los colores scrapeados que no estan en la base de datos
+                    for (String DbVariantColor : DbVariantColors) {
+                        variantExists = scrappedVariantColors.contains(DbVariantColor);
+                        if (!variantExists) {
+                            saveVariant(product, DbVariantColor, 0);
+                        }
+                    }
+                    //falta implementar stock 0
                 } else if (variationsSinglePickerDiv.isVisible()) {
-                    variantColorValue = variantColorSingle.innerText();
-                    page.waitForTimeout((long) (Math.random() * 1000) + 2000);
-                    processAvailableQuantityByColor(availableQuantity, product, variantColorValue);
+
+                    page.waitForTimeout((long) (Math.random() * 1000) + 3000);
+
+                    variantColor = variantColorSingleLoc.innerText();
+
+                    availableQuantity = getAvailableQuantity(availableQuantityLoc);
+                    saveVariant(product, variantColor, availableQuantity);
+                    //falta implementar stock 0
                 } else if (variationsDropdownPickerDiv.isVisible()) {
-                    Locator variationsDropdown = variationsDropdownPickerDiv.locator(".andes-dropdown__trigger");
-                    variationsDropdown.click();
+                    variationsDropdownPickerDiv.locator(".andes-dropdown__trigger").click();
                     Locator variationsDropdownUl = variationsDropdownPickerDiv.locator(".andes-card__content ul");
-                    variantLinksSize = variationsDropdownUl.locator("li").all().size();
-                    page.waitForTimeout((long) (Math.random() * 1000) + 2000);
-                    for (int i = 0; i < variantLinksSize; i++) {
+                    totalVariants = variationsDropdownUl.locator("li").all().size();
+
+                    page.waitForTimeout((long) (Math.random() * 1000) + 3000);
+
+                    for (int i = 0; i < totalVariants; i++) {
                         variationsDropdownUl.locator("li").nth(i).click();
-                        page.waitForTimeout((long) (Math.random() * 1000) + 2000);
-                        variantColorValue = variantColorSingle.innerText();
-                        processAvailableQuantityByColor(availableQuantity, product, variantColorValue);
+
+                        page.waitForTimeout((long) (Math.random() * 1000) + 3000);
+
+                        variantColor = variantColorSingleLoc.innerText();
+
+                        saveVariant(product, variantColor, availableQuantity);
+
                         variationsDropdownPickerDiv.click();
                     }
                 }
@@ -105,28 +137,32 @@ public class ScrapingService {
         }
     }
 
-    private List<Product> getConfiguredProducts() {
+    private List<Product> getProducts() {
         return productRepository.findAll();
     }
 
-    // ver los scrapers para Tapones Loop Experience y Los Chicles
+    private List<String> getColorsByProduct(Product product) {
+        return variantRepository.findColorsByProduct(product);
+    }
 
-    private void processAvailableQuantityByColor(Locator availableQuantityDiv, Product product, String variantName) {
-        String availableQuantityText;
-        Integer availableQuantityValue;
+    private void saveVariant(Product product, String variantName, Integer availableQuantity) {
 
-        if (availableQuantityDiv.isVisible()) {
-            availableQuantityText = availableQuantityDiv.innerText();
-            availableQuantityValue = Integer.parseInt(availableQuantityText.replaceAll("\\D", ""));
-        } else {
-            availableQuantityValue = 1;
-        }
-
-        Variant variant = variantRepository.findByProductAndName(product, variantName)
+        Variant variant = variantRepository.findByProductAndColor(product, variantName)
                 .orElse(new Variant());
-        variant.setName(variantName);
-        variant.setStock(availableQuantityValue);
+        variant.setColor(variantName);
+        variant.setStock(availableQuantity);
         variant.setProduct(product);
         variantRepository.save(variant);
+    }
+
+    private int getAvailableQuantity(Locator availableQuantityLoc) {
+
+        if (availableQuantityLoc.isVisible()) {
+            availableQuantityText = availableQuantityLoc.innerText();
+            return Integer.parseInt(availableQuantityText.replaceAll("\\D", ""));
+        }
+        // Esto controla cuando no hay digitos en el texto (la cantidad es "Ultimo disponible!")
+        return 1;
+
     }
 }
